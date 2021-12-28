@@ -14,8 +14,8 @@ assert subprocess.run(['python', '-m', 'pytest']).returncode == 0
 # run coverage and xml report
 os.system("python -m pytest  --cov=hvmCodeWriter tests/")
 os.system("python -m pytest --cov-report xml  --cov=hvmCodeWriter tests/")
-
-dirs = ['FunctionCalls/FibonacciElement', 'FunctionCalls/NestedCall', 'FunctionCalls/SimpleFunction', 
+# 
+dirs = ['FunctionCalls/FibonacciElement','FunctionCalls/NestedCall', 'FunctionCalls/SimpleFunction', 
 'FunctionCalls/StaticsTest', 'ProgramFlow/BasicLoop', 'ProgramFlow/FibonacciSeries']
 for dir_name in dirs:
     sys_file = os.path.join(dir_name, "Sys.vm")

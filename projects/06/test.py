@@ -9,8 +9,7 @@ TextComparer = os.path.join(os.path.abspath(TOOLS_DIR), f'TextComparer.{extentio
 assert subprocess.run(['python', '-m', 'pytest']).returncode == 0
 
 success_msg =  b"Comparison ended successfully" + os.linesep.encode('ascii')
-dirs = ["add", "instructions", "symbols", "max", "pong", "rect"]
-
+dirs = ["add", "max", "pong", "rect"] #"instructions", and "symbols" are small test programs and are not mandatory for the end2end test
 for dir in dirs:
     for path in os.listdir(dir):
         filename, extention = os.path.splitext(path)

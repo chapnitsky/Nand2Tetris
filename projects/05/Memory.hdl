@@ -29,8 +29,8 @@ CHIP Memory {
     PARTS:
     DMux4Way(in=load, sel=address[13..14], a=ram1, b=ram2, c=loadscreen, d=loadkbd);//Routing RAM, Screen and Keyboard
 	Or(a=ram1, b=ram2, out=loadram);//Check if RAM is needed
-    RAM16K(in=in, load=loadram, address=address[0..13], out=ramout);//Setting RAM if needed
-    Screen(in=in, load=loadscreen, address=address[0..12], out=screenout);//Setting Screen if needed
-    Keyboard(out=kbdout);//Getting Keyboard
-    Mux4Way16(a=ramout, b=ramout, c=screenout, d=kbdout, sel=address[13..14], out=out);//Moving to main output selected operation
+    RAM16K(in=in, load=loadram, address=address[0..13], out=ram_out);//Setting RAM if needed
+    Screen(in=in, load=loadscreen, address=address[0..12], out=screen_out);//Setting Screen if needed
+    Keyboard(out=kbd_out);//Getting Keyboard
+    Mux4Way16(a=ram_out, b=ram_out, c=screen_out, d=kbd_out, sel=address[13..14], out=out);//Moving to main output selected operation
 }

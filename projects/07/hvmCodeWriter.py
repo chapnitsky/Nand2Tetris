@@ -20,11 +20,10 @@ class CodeWriter(object):
         """
         self.file = open(outputName, 'w')
         self.fileName = self.setFileName(outputName)
-
+        self.rand = 0
         # used to generate unique labels
         self.labelNumber = 0
         self.functionName = ""
-
 
     def close(self):
         """
@@ -34,7 +33,6 @@ class CodeWriter(object):
         self._writeComment("Infinite loop")
         self._writeCode('(%s), @%s, 0;JMP' % (label, label))
         self.file.close()
-
 
     def setFileName(self, fileName):
         """
@@ -48,7 +46,7 @@ class CodeWriter(object):
         self.fileName = os.path.splitext(self.fileName)[0]
 
     def _uniqueLabel(self):
-        self.labelNumber += 1;
+        self.labelNumber += 1
         return "label" + str(self.labelNumber)
 
     def write(self, text):
@@ -73,47 +71,97 @@ class CodeWriter(object):
         if (debug):
             self.file.write('    // %s\n' % comment)
 
-    def _pushD(self):
+    def _D2Stack(self):
         """
         Writes Hack assembly code to push the value from the D register 
         onto the stack.
         TODO - Stage I - see Figure 7.2
         """
-        pass
-
-    def _popD(self):
+        self._writeCode('@SP, A=M, M=D, @SP, M=M+1') #  'RAM[0] = RAM[0] + 1' = SP++
+    
+    def _Stack2D(self):
         """"
         Writes Hack assembly code to pop a value from the stack 
         into the D register.
         TODO - Stage I - see Figure 7.2
         """
-        pass
+        self._writeCode('@SP, M=M-1, @SP, A=M, D=M') # D = RAM[SP]
 
     def writeArithmetic(self, command):
         """
         Writes Hack assembly code for the given command.
         TODO - Stage I - see Figure 7.5
         """
-        self._writeComment(command);
+        self._writeComment(command)
+        self.rand += 1
+        correct_label = f'(Correct{str(self.rand)})'
+        correct_load = f'@Correct{str(self.rand)}'
 
+        continue_label = f'(Continue{str(self.rand)})'
+        continue_load = f'@Continue{str(self.rand)}'
+
+        notcor_label = f'(NotCorrect{str(self.rand)})'
+        notcor_load = f'@NotCorrect{str(self.rand)}'
+
+        string_condition = f'{correct_label}, D=-1, {continue_load}, 0;JMP, {notcor_label}, D=0, {continue_load}, 0;JMP , {continue_label}'
         if command == T_ADD:
-            pass 
+            self._Stack2D()
+            self._writeCode('@add, M=D') # RAM[SP] = D
+            self._Stack2D()
+            self._writeCode('@add, D=M, @SP, A=M, D=M+D')
+            self._D2Stack()
         elif command == T_SUB:
-            pass
+            self._Stack2D()
+            self._writeCode('@sub, M=D') # RAM[SP] = D
+            self._Stack2D()
+            self._writeCode('@sub, D=M, @SP, A=M, D=M-D')
+            self._D2Stack()
         elif command == T_NEG:
-            pass
+            self._Stack2D()
+            self._writeCode('@0, D=A-D')
+            self._D2Stack()
         elif command == T_EQ:
-            pass
+            self._Stack2D()
+            self._writeCode('@eq, M=D') # RAM[eq] = D
+            self._Stack2D()
+            self._writeCode('@eq, D=M, @SP, A=M, D=M-D')
+            self._writeCode(f'{correct_load}, D;JEQ, {notcor_load}, 0;JMP')  # True = -1, False = 0
+            self._writeCode(string_condition)
+            self._D2Stack()
         elif command == T_GT:
-            pass
+            self._Stack2D()
+            self._writeCode('@gt, M=D') # RAM[SP] = D
+            self._Stack2D()
+            self._writeCode('@gt, D=M, @SP, A=M, D=M-D')
+            self._writeCode(f'{correct_load}, D;JGT, {notcor_load}, 0;JMP')  # True = -1, False = 0
+            self._writeCode(string_condition)
+            self._D2Stack()
         elif command == T_LT:
-            pass
+            self._Stack2D()
+            self._writeCode('@lt, M=D') # RAM[SP] = D
+            self._Stack2D()
+            self._writeCode('@lt, D=M, @SP, A=M, D=M-D')
+            self._writeCode(f'{correct_load}, D;JLT, {notcor_load}, 0;JMP')  # True = -1, False = 0
+            self._writeCode(string_condition)
+            self._D2Stack()
         elif command == T_AND:
-            pass
+            self._Stack2D()
+            self._writeCode('@and, M=D') # RAM[SP] = D
+            self._Stack2D()
+            self._writeCode('@and, D=M, @SP, A=M, D=D&M')
+            # self._writeCode(f'{correct_load}, D;JLT, {notcor_load}, 0;JMP')  # True = -1, False = 0
+            # self._writeCode(string_condition)
+            self._D2Stack()
         elif command == T_OR:
-            pass
+            self._Stack2D()
+            self._writeCode('@or, M=D') # RAM[SP] = D
+            self._Stack2D()
+            self._writeCode('@or, D=M, @SP, A=M, D=D|M')
+            self._D2Stack()
         elif command == T_NOT:
-            pass
+            self._Stack2D()
+            self._writeCode('D=!D')
+            self._D2Stack()
         else:
             raise(ValueError, 'Bad arithmetic command')
         
@@ -129,29 +177,92 @@ class CodeWriter(object):
         """
         if commandType == C_PUSH:
             self._writeComment("push %s %d" % (segment, index))
-
             if segment == T_CONSTANT: 
-                pass 
+                self._writeCode(f'@{index}, D=A')
+                self._D2Stack()
             elif segment == T_STATIC:
-                pass
+                self._writeCode(f'@{self.fileName}.{index}')
+                self._writeCode('D=M')
+                self._D2Stack()
             elif segment == T_POINTER:
-                pass
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@3, AD=D+A')
+                self._writeCode('D=M')
+                self._D2Stack()
             elif segment == T_TEMP:
-                pass
-            else: # argument, local, this, that
-                pass
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@5, AD=D+A')
+                self._writeCode('D=M')
+                self._D2Stack()
+            elif segment == T_THIS:
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@THIS, A=M, AD=D+A')
+                self._writeCode('D=M')
+                self._D2Stack()
+            elif segment == T_THAT:
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@THAT, A=M, AD=D+A')
+                self._writeCode('D=M')
+                self._D2Stack()
+            elif segment == T_ARGUMENT:
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@ARG, A=M, AD=D+A')
+                self._writeCode('D=M')
+                self._D2Stack()
+            elif segment == T_LOCAL:
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@LCL, A=M, AD=D+A')
+                self._writeCode('D=M')
+                self._D2Stack()
+            
 
         elif commandType == C_POP:
             self._writeComment("pop %s %d" % (segment, index))
-
             if segment == T_STATIC:
-                pass
+                self._Stack2D()
+                self._writeCode(f'@{self.fileName}.{index}, M=D')
             elif segment == T_POINTER:
-                pass
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@3, AD=D+A')
+                self._writeCode(f'@R13, M=D')
+                self._Stack2D()
+                self._writeCode(f'@R13, A=M')
+                self._writeCode('M=D')
             elif segment == T_TEMP:
-                pass
-            else: # argument, local, this, that
-                pass
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@5, AD=D+A')
+                self._writeCode(f'@R13, M=D')
+                self._Stack2D()
+                self._writeCode(f'@R13, A=M')
+                self._writeCode('M=D')
+            elif segment == T_THIS:
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@THIS, A=M, AD=D+A')
+                self._writeCode(f'@R13, M=D')
+                self._Stack2D()
+                self._writeCode(f'@R13, A=M')
+                self._writeCode('M=D')
+            elif segment == T_THAT:
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@THAT, A=M, AD=D+A')
+                self._writeCode(f'@R13, M=D')
+                self._Stack2D()
+                self._writeCode(f'@R13, A=M')
+                self._writeCode('M=D')
+            elif segment == T_ARGUMENT:
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@ARG, A=M, AD=D+A')
+                self._writeCode(f'@R13, M=D')
+                self._Stack2D()
+                self._writeCode(f'@R13, A=M')
+                self._writeCode('M=D')
+            elif segment == T_LOCAL:
+                self._writeCode(f'@{index}, D=A')
+                self._writeCode(f'@LCL, A=M, AD=D+A')
+                self._writeCode(f'@R13, M=D')
+                self._Stack2D()
+                self._writeCode(f'@R13, A=M')
+                self._writeCode('M=D')
 
         else:
             raise(ValueError, 'Bad push/pop command')

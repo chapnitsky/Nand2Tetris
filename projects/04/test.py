@@ -13,4 +13,4 @@ chips = ['Mult'#, 'Fill' #Fill.tst needs manual help, can you think of refactori
     ]
 
 for chip in chips:
-    assert subprocess.check_output([CPUEmulator, f'mult/{chip}.tst']) == success_msg, (f'Hardware simulator failure on chip {chip}')
+    assert subprocess.check_output([CPUEmulator, f'{chip}/{chip}.tst'])  == success_msg, (f'Hardware simulator failure on chip {chip}')

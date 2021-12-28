@@ -19,6 +19,8 @@ from hasmUtils import *
 from sys import argv
 import string
 import re
+n = 16
+
 
 def read_asm_file(input_filename):
     """
@@ -60,9 +62,11 @@ def command_type(command):
     to identify the type of command represented by the parameter string.
     If the command is none of these types, throw a FatalError exception.
     """
-    # TODO Stage A: Categorize A_COMMAND and C_COMMAND
-    # TODO Stage B: Categorize L_COMMAND
-    pass
+    if command[0] == '(':
+        return L_COMMAND
+    elif command[0] == '@':
+        return A_COMMAND
+    return C_COMMAND
 
 def emit_C_instruction(command, output_file):
     """
@@ -76,10 +80,29 @@ def emit_C_instruction(command, output_file):
     # The CodeTranslator class, defined in hasmUtils.py, has methods 
     # dest(string), comp(string), and jump(string) 
     # to translate assembly mnemonics of each type into strings of 0 and 1.
-    codeTranslator = Code()
+    code = CodeTranslator()
+    jmp_idx = command.find(';')
+    eq_idx = command.find('=')
 
-    # TODO Stage A: translate C command to machine instruction and write to file
-    pass
+    dst = '000'
+    comp = '0000000'
+    jmp = '000'
+    if jmp_idx != -1:
+        jmp = code.jump(command[jmp_idx + 1:])
+        if eq_idx == -1:
+            comp = code.comp(command[:jmp_idx])
+    if eq_idx != -1:
+        dst = code.dest(command[:eq_idx])
+        if jmp_idx != -1:
+            comp = code.comp(command[eq_idx + 1:jmp_idx])
+        else:
+            comp = code.comp(command[eq_idx + 1:])
+    
+    string = '111'
+    string += str(comp + dst + jmp)
+    output_file.write(string + '\n')
+
+
 
 def emit_A_instruction(command, symbol_table, output_file):
     """
@@ -89,17 +112,35 @@ def emit_A_instruction(command, symbol_table, output_file):
     16 characters "0" and "1". Each line of the output file should consist
     of exactly one machine language instruction.
     """
+    cmd = command[1:]
+    string = '0'*16
+    if cmd.isdigit() and int(cmd) < 16:
+        cmd = 'R' + cmd
+    global n
+    if cmd not in symbol_table.keys() and not cmd.isdigit():  # well well, VARIABLE.
+        symbol_table[cmd] = n
+        n += 1
+    if not cmd.isdigit():
+        num = symbol_table[cmd]
+    else:
+        num = int(cmd)
+    temp =  "{0:b}".format(num)
+    string += temp
+    string = string[-16:]
+    output_file.write(string + '\n')
 
-    # TODO Stage A: translate C command to machine instruction and write to file
-    # TODO Stage B: revise to handle labels as well as integer constants
-    pass
 
 def first_pass(command_list, symbol_table):
     """
     Given a list of commands, adds labels to the given symbol table.
     """
-    # TODO Stage B: Add labels to symbol table
-    pass
+    rows_num = 0
+    for cmd in command_list:
+        if cmd[0] == '(' and cmd[len(cmd) - 1] == ')':  # label
+            symbol_table[cmd[1:-1]] = rows_num
+        else:
+            rows_num += 1
+
 
 def second_pass(command_list, symbol_table, output_filename):
     """
@@ -123,7 +164,7 @@ def second_pass(command_list, symbol_table, output_filename):
 
     output_file.close()
    
-def main():
+def go():
     # Get input and output filenames
     input_filename = argv[1]
     match = re.match('^(.*)\.asm$', input_filename)
@@ -136,10 +177,9 @@ def main():
 
     # Read and preprocess the assembly source code into a list of commands
     list_of_commands = read_asm_file(input_filename)
-
     # Assemble the code!
     first_pass(list_of_commands, symbol_table)
     second_pass(list_of_commands, symbol_table, output_filename)
 
 if __name__ == '__main__':
-    main();
+    go()
